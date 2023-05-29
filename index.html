@@ -114,9 +114,13 @@
             var file = fileInput.files[0];
             var description = document.getElementById('description').value;
 
-            // Check if a file is selected
-            if (!file) {
+            // Check if a file is selected and problem is entered
+            if (!file ) {
                 alert("Please select an image to upload.");
+                return;
+            }
+            if (!description) {
+                alert("Please enter your problem.");
                 return;
             }
 
