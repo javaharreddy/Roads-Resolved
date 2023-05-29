@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Road Complaints - Raise Issues with Road Problems</title>
+    <style>
+        /* CSS styling for the page */
+        body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-image: url('https://hips.hearstapps.com/hmg-prod/images/5-things-you-need-to-know-about-potholes-1674217331.jpg');
+    background-size: cover;
+    background-position: center;
+    font-family: 'Pacifico', cursive;
+    filter: blur(5%);
+}
+        #upload-window {
+            width: 400px;
+            padding: 30px;
+            border-radius: 5px;
+            background-color: #fff;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            margin: 0 0 20px;
+            color: #333;
+            text-align: center;
+        }
+
+        #file-input {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            background-color: #fff;
+            color: #555;
+        }
+
+        #image-preview {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        #image-preview img {
+            max-width: 100%;
+            height: auto;
+            margin-top: 10px;
+        }
+
+        #description {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            background-color: #fff;
+            color: #555;
+        }
+
+        #upload-button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            background-color: #4CAF50;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        #upload-button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div id="upload-window">
+        <h1>Roads Resolved</h1>
+        <input type="file" id="file-input" accept="image/*" />
+        <div id="image-preview"></div>
+        <textarea id="description" placeholder="Enter the problem"></textarea>
+        <button id="upload-button" onclick="uploadData()">Raise Complaint</button>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.3.3/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.3.3/firebase-storage.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.3.3/firebase-firestore.js"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBmI0VhFDpH48JWdNuAgge-3z4VbkMrwlI&libraries=places"></script>
+    <script>
+        // Initialize Firebase
+        var firebaseConfig = {
+            apiKey: "AIzaSyDPVwb8pTJdyqber3WfYaITX75wfXj2xFM",
+            authDomain: "uploadimg-4a5c2.firebaseapp.com",
+            projectId: "uploadimg-4a5c2",
+            storageBucket: "uploadimg-4a5c2.appspot.com",
+            messagingSenderId: "12582455425",
+            appId: "1:12582455425:web:aadb7b141c287f994f6580",
+            measurementId: "G-P001WWPHCJ"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+
+        // JavaScript code for uploading and previewing the image
+        function uploadData() {
+            var fileInput = document.getElementById('file-input');
+            var file = fileInput.files[0];
+            var description = document.getElementById('description').value;
+
+            // Check if a file is selected
+            if (!file) {
+                alert("Please select an image to upload.");
+                return;
+            }
+
+            // Upload image to Firebase Storage
+            var storageRef = firebase.storage().ref();
+            var imageRef = storageRef.child('images/' + file.name);
+
+            imageRef.put(file)
+                .then(function(snapshot) {
+                    console.log('Image uploaded successfully!');
+                    getImageUrl(imageRef, description);
+
+                    // Display a message below the image preview
+                    var message = document.createElement('p');
+                    message.innerText = 'Complaint Raised.';
+                    message.style.color = '#333';
+                    message.style.textAlign = 'center';
+                    document.getElementById('upload-window').appendChild(message);
+                })
+                .catch(function(error) {
+                    console.error('Error uploading image: ', error);
+                });
+        }
+
+        function getImageUrl(imageRef, description) {
+            imageRef.getDownloadURL()
+                .then(function(url) {
+                    var preview = document.getElementById('image-preview');
+                    var img = document.createElement('img');
+                    img.src = url;
+                    img.alt = 'Image Preview';
+                    preview.innerHTML = '';
+                    preview.appendChild(img);
+
+                    // Get user's location using Google Maps API
+                    if (navigator.geolocation) {
+                        navigator.geolocation.getCurrentPosition(function(position) {
+                            var latitude = position.coords.latitude;
+                            var longitude = position.coords.longitude;
+
+                            // Save image, description, and location to Firebase Firestore
+                            saveImageData(url, description, latitude, longitude);
+                        });
+                    } else {
+                        console.error('Geolocation is not supported by this browser.');
+                    }
+                })
+                .catch(function(error) {
+                    console.error('Error getting image URL: ', error);
+                });
+        }
+
+        function saveImageData(imageUrl, description, latitude, longitude) {
+            var db = firebase.firestore();
+
+            db.collection("images").add({
+                imageUrl: imageUrl,
+                description: description,
+                latitude: latitude,
+                longitude: longitude,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp() // Add a timestamp field
+            })
+            .then(function(docRef) {
+                console.log("Image data saved with ID: ", docRef.id);
+                // Clear the form after successful upload
+                clearForm();
+            })
+            .catch(function(error) {
+                console.error("Error saving image data: ", error);
+            });
+        }
+
+        function clearForm() {
+            document.getElementById('file-input').value = '';
+            document.getElementById('description').value = '';
+            document.getElementById('image-preview').innerHTML = '';
+        }
+    </script>
+</body>
+</html>
+
